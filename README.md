@@ -127,6 +127,15 @@ spring.datasource.url=jdbc:mysql://localhost:3306/[Enter Your Database Name] <br
 username: [Enter username] <br>
 password: [Enter password]
 
+#### Update the application.properties with Eureka Configuration,JPA Properties and port:
+spring.jpa.hibernate.ddl-auto=update <br>
+spring.jpa.show-sql=true <br>
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect <br>
+
+server.port=8083 <br>
+
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka <br>
+
 ### Run the application
 
 
