@@ -134,9 +134,9 @@ password: [Enter password]
 ### Test the service using Postman or another API client.
 
 ### Usage
-Issuing a New Card <br>
-Make a POST request to /cards/issue with the cardholder’s details. <br>
-Ensure that the user ID exists in the User Service before issuing the card. <br>
-Blocking or Unblocking a Card <br>
-To block a card, use the /cards/block/{cardId} endpoint. <br>
-To unblock a card, use the /cards/unblock/{cardId} endpoint. <br>
+* Issuing a New Card <br>
+* Make a POST request to /cards/issue with the cardholder’s details. <br>
+* Ensure that the user ID exists in the User Service before issuing the card. <br>
+* Blocking or Unblocking a Card <br>
+* To block a card, use the /cards/block/{cardId} endpoint. <br>
+* To unblock a card, use the /cards/unblock/{cardId} endpoint. <br>
