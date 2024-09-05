@@ -10,8 +10,6 @@ The **Card Service** is a microservice that handles card-related operations in t
 * Endpoints
 * Setup Instructions
 * Usage
-* Contributing
-* License
 
 ### Features
 
