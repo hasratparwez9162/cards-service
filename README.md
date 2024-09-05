@@ -81,14 +81,17 @@ Attributes:
       URL: /cards/block/{cardId} <br>
       Method: PUT <br>
       Path Variable: cardId (Long) <br>
-      Response: HTTP 200 OK<br>
+      Response: 
+HTTP 200 OK <br>
+   Card blocked successfully
 
 3. Unblock a Card<br>
    URL: /cards/unblock/{cardId}<br>
    Method: PUT<br>
    Path Variable: cardId (Long)<br>
 
-   Response: HTTP 200 OK
+   Response: HTTP 200 OK <br>
+   Card unblocked successfully
 
 4. Get Cards by User ID <br>
    URL: /cards/user/{userId} <br>
