@@ -47,7 +47,7 @@ Attributes:
 * availableLimit: Remaining available credit limit.
 * expiryDate: Expiry date of the card.
 * userId: Foreign key linking to the user.
-* status: Enum for card status (e.g., ACTIVE, BLOCKED).
+* status: Enum for card status (e.g., ACTIVE, BLOCKED, EXPIRED).
 
 ### Endpoints
 
@@ -139,7 +139,7 @@ eureka.client.service-url.defaultZone=http://localhost:8761/eureka <br>
 
 ### Run the application
 
-
+Start main method as per your IDE.
 
 ### Test the service using Postman or another API client.
 
