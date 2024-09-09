@@ -12,4 +12,5 @@ public interface CardsService {
     void blockCard(Long cardId);
 
     void unblockCard(Long cardId);
+    void deleteCard(Long cardId);
 }

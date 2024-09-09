@@ -55,6 +55,11 @@ public class CardServiceImpl implements CardsService {
         }
     }
 
+    @Override
+    public void deleteCard(Long cardId) {
+        cardRepository.deleteById(cardId);
+    }
+
     // Method to generate a random card number
     private String generateCardNumber() {
         Random random = new Random();

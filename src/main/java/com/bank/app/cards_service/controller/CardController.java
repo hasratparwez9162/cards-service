@@ -38,4 +38,9 @@ public class CardController {
         cardService.unblockCard(cardId);
         return new ResponseEntity<>("Card unblocked successfully", HttpStatus.OK);
     }
+    @DeleteMapping("/delete/{cardId}")
+    public ResponseEntity<String> deleteCard(@PathVariable Long cardId) {
+        cardService.deleteCard(cardId);
+        return new ResponseEntity<>("Card Deleted successfully", HttpStatus.OK);
+    }
 }
