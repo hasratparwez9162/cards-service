@@ -1,6 +1,8 @@
 package com.bank.app.cards_service.controller;
 
+import com.bank.app.dto.NotificationCard;
 import com.bank.app.cards_service.entity.Card;
+import com.bank.app.cards_service.service.KafkaMessagePublisher;
 import com.bank.app.cards_service.service.impl.CardServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,10 +15,19 @@ import java.util.List;
 public class CardController {
     @Autowired
     private CardServiceImpl cardService;
+    @Autowired
+    private KafkaMessagePublisher publisher;
 //  Issue Cards like credit and Debit Cards
     @PostMapping("/issue")
     public ResponseEntity<Card> issueCard(@RequestBody Card card) {
         Card newCard = cardService.issueCard(card);
+        NotificationCard details = new NotificationCard();
+        details.setCardNumber(newCard.getCardNumber());
+        details.setCardHolderName(newCard.getCardHolderName());
+        details.setCardType(newCard.getCardType());
+        details.setStatus(newCard.getStatus());
+        details.setMessage("Successfully issue card");
+        publisher.issueCardNotification(details);
         return new ResponseEntity<>(newCard, HttpStatus.CREATED);
     }
 //  Get cards details of a user
