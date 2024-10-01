@@ -1,5 +1,8 @@
 package com.bank.app.cards_service.entity;
 
+import com.bank.core.entity.CardStatus;
+import com.bank.core.entity.CardType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,12 +15,13 @@ import java.time.LocalDate;
 @Builder
 @Entity
 @Table(name = "cards")
+@Schema(description = "Card entity representing card details")
 public class Card {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    @Schema(example = "1234-5678-9876-5432")
     private String cardNumber;
 
     private String cardHolderName;

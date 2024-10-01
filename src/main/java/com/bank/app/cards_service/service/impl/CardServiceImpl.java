@@ -1,9 +1,10 @@
 package com.bank.app.cards_service.service.impl;
 
 import com.bank.app.cards_service.entity.Card;
-import com.bank.app.cards_service.entity.CardStatus;
 import com.bank.app.cards_service.repo.CardsRepository;
+import com.bank.app.cards_service.service.CardEventPublisher;
 import com.bank.app.cards_service.service.CardsService;
+import com.bank.core.entity.CardStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,11 +17,11 @@ import java.util.Random;
 public class CardServiceImpl implements CardsService {
     @Autowired
     private CardsRepository cardRepository;
+
+    @Autowired
+    private CardEventPublisher cardEventPublisher;
     @Override
     public Card issueCard(Card card) {
-        // Logic for issuing a new card
-        // Generate a card number
-
         String cardNumber = generateCardNumber();
         card.setCardNumber(cardNumber);
 
@@ -29,9 +30,10 @@ public class CardServiceImpl implements CardsService {
         card.setAvailableLimit(card.getCreditLimit() != null ? card.getCreditLimit() : BigDecimal.ZERO); // Set available limit if not provided
         card.setCreditLimit(card.getCreditLimit() != null ? card.getCreditLimit() : BigDecimal.ZERO);
         card.setStatus(CardStatus.ACTIVE); // Set default status to ACTIVE
-
+        Card newCard = cardRepository.save(card);
+        cardEventPublisher.sendIssueCardMessage(newCard);
         // Save the card to the database
-        return cardRepository.save(card);
+        return newCard;
 
     }
     @Override
@@ -43,7 +45,9 @@ public class CardServiceImpl implements CardsService {
         Card card = cardRepository.findById(cardId).orElse(null);
         if (card != null) {
             card.setStatus(CardStatus.BLOCKED);
-            cardRepository.save(card);
+           Card blockedCard = cardRepository.save(card);
+            System.out.println(blockedCard.toString());
+           cardEventPublisher.sendCardBlockMessage(blockedCard);
         }
     }
     @Override
@@ -51,7 +55,8 @@ public class CardServiceImpl implements CardsService {
         Card card = cardRepository.findById(cardId).orElse(null);
         if (card != null) {
             card.setStatus(CardStatus.ACTIVE);
-            cardRepository.save(card);
+           Card unblockedCard = cardRepository.save(card);
+           cardEventPublisher.sendCardUnblockMessage(unblockedCard);
         }
     }
 
