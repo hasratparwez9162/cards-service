@@ -5,6 +5,7 @@ import com.bank.app.cards_service.repo.CardsRepository;
 import com.bank.app.cards_service.service.CardEventPublisher;
 import com.bank.app.cards_service.service.CardsService;
 import com.bank.core.entity.CardStatus;
+import com.bank.core.entity.CardType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -25,17 +26,35 @@ public class CardServiceImpl implements CardsService {
         String cardNumber = generateCardNumber();
         card.setCardNumber(cardNumber);
 
-        // Set default values
-        card.setExpiryDate(LocalDate.now().plusYears(10)); // Card valid for 10 years from now
-        card.setAvailableLimit(card.getCreditLimit() != null ? card.getCreditLimit() : BigDecimal.ZERO); // Set available limit if not provided
-        card.setCreditLimit(card.getCreditLimit() != null ? card.getCreditLimit() : BigDecimal.ZERO);
-        card.setStatus(CardStatus.ACTIVE); // Set default status to ACTIVE
-        Card newCard = cardRepository.save(card);
-        cardEventPublisher.sendIssueCardMessage(newCard);
-        // Save the card to the database
-        return newCard;
+        // Set default expiry date to 10 years from now
+        card.setExpiryDate(LocalDate.now().plusYears(10));
 
+        // Determine Card Type and set default values accordingly
+        if (card.getCardType() == CardType.CREDIT) {
+            // Set default credit limit to 2,500 if not provided
+            if (card.getCreditLimit() == null) {
+                card.setCreditLimit(new BigDecimal("25000.00"));
+            }
+            // Set available limit equal to credit limit
+            card.setAvailableLimit(card.getCreditLimit());
+        } else if (card.getCardType() == CardType.DEBIT) {
+            // Set credit limit to null
+            card.setCreditLimit(null);
+            card.setAvailableLimit(BigDecimal.ZERO);
+        } else {
+            throw new IllegalArgumentException("Unsupported Card Type: " + card.getCardType());
+        }
+        card.setStatus(CardStatus.ACTIVE);
+
+        // Save the card to the database
+        Card newCard = cardRepository.save(card);
+
+        // Publish an event/message indicating a new card has been issued
+        cardEventPublisher.sendIssueCardMessage(newCard);
+
+        return newCard;
     }
+
     @Override
     public List<Card> getCardsByUserId(Long userId) {
         return cardRepository.findByUserId(userId);
