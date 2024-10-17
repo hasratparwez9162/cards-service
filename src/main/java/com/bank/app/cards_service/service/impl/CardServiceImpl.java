@@ -1,11 +1,14 @@
 package com.bank.app.cards_service.service.impl;
 
 import com.bank.app.cards_service.entity.Card;
+import com.bank.app.cards_service.exception.ResourceNotFoundException;
 import com.bank.app.cards_service.repo.CardsRepository;
 import com.bank.app.cards_service.service.CardEventPublisher;
 import com.bank.app.cards_service.service.CardsService;
 import com.bank.core.entity.CardStatus;
 import com.bank.core.entity.CardType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,78 +19,110 @@ import java.util.Random;
 
 @Service
 public class CardServiceImpl implements CardsService {
+    private static final Logger logger = LoggerFactory.getLogger(CardServiceImpl.class);
+
     @Autowired
     private CardsRepository cardRepository;
 
     @Autowired
     private CardEventPublisher cardEventPublisher;
+
     @Override
     public Card issueCard(Card card) {
-        String cardNumber = generateCardNumber();
-        card.setCardNumber(cardNumber);
+        try {
+            logger.info("Issuing a new card for user: {}", card.getUserId());
+            String cardNumber = generateCardNumber();
+            card.setCardNumber(cardNumber);
 
-        // Set default expiry date to 10 years from now
-        card.setExpiryDate(LocalDate.now().plusYears(10));
+            card.setExpiryDate(LocalDate.now().plusYears(10));
 
-        // Determine Card Type and set default values accordingly
-        if (card.getCardType() == CardType.CREDIT) {
-            // Set default credit limit to 2,500 if not provided
-            if (card.getCreditLimit() == null) {
-                card.setCreditLimit(new BigDecimal("25000.00"));
+            if (card.getCardType() == CardType.CREDIT) {
+                if (card.getCreditLimit() == null) {
+                    card.setCreditLimit(new BigDecimal("25000.00"));
+                }
+                card.setAvailableLimit(card.getCreditLimit());
+            } else if (card.getCardType() == CardType.DEBIT) {
+                card.setCreditLimit(null);
+                card.setAvailableLimit(BigDecimal.ZERO);
+            } else {
+                throw new IllegalArgumentException("Unsupported Card Type: " + card.getCardType());
             }
-            // Set available limit equal to credit limit
-            card.setAvailableLimit(card.getCreditLimit());
-        } else if (card.getCardType() == CardType.DEBIT) {
-            // Set credit limit to null
-            card.setCreditLimit(null);
-            card.setAvailableLimit(BigDecimal.ZERO);
-        } else {
-            throw new IllegalArgumentException("Unsupported Card Type: " + card.getCardType());
+            card.setStatus(CardStatus.ACTIVE);
+
+            Card newCard = cardRepository.save(card);
+            cardEventPublisher.sendIssueCardMessage(newCard);
+
+            logger.info("Card issued successfully with card number: {}", newCard.getCardNumber());
+            return newCard;
+        } catch (Exception ex) {
+            logger.error("Error issuing card: ", ex);
+            throw ex;
         }
-        card.setStatus(CardStatus.ACTIVE);
-
-        // Save the card to the database
-        Card newCard = cardRepository.save(card);
-
-        // Publish an event/message indicating a new card has been issued
-        cardEventPublisher.sendIssueCardMessage(newCard);
-
-        return newCard;
     }
 
     @Override
     public List<Card> getCardsByUserId(Long userId) {
-        return cardRepository.findByUserId(userId);
-    }
-    @Override
-    public void blockCard(Long cardId) {
-        Card card = cardRepository.findById(cardId).orElse(null);
-        if (card != null) {
-            card.setStatus(CardStatus.BLOCKED);
-           Card blockedCard = cardRepository.save(card);
-            System.out.println(blockedCard.toString());
-           cardEventPublisher.sendCardBlockMessage(blockedCard);
+        try {
+            logger.info("Fetching cards for user ID: {}", userId);
+            List<Card> cards = cardRepository.findByUserId(userId);
+            if (cards.isEmpty()) {
+                throw new ResourceNotFoundException("No cards found for user ID: " + userId);
+            }
+            logger.info("Fetched {} cards for user ID: {}", cards.size(), userId);
+            return cards;
+        } catch (Exception ex) {
+            logger.error("Error fetching cards: ", ex);
+            throw ex;
         }
     }
+
+    @Override
+    public void blockCard(Long cardId) {
+        try {
+            logger.info("Blocking card with ID: {}", cardId);
+            Card card = cardRepository.findById(cardId).orElseThrow(() -> new ResourceNotFoundException("Card not found with ID: " + cardId));
+            card.setStatus(CardStatus.BLOCKED);
+            Card blockedCard = cardRepository.save(card);
+            logger.info("Card with ID: {} blocked successfully", cardId);
+            cardEventPublisher.sendCardBlockMessage(blockedCard);
+        } catch (Exception ex) {
+            logger.error("Error blocking card: ", ex);
+            throw ex;
+        }
+    }
+
     @Override
     public void unblockCard(Long cardId) {
-        Card card = cardRepository.findById(cardId).orElse(null);
-        if (card != null) {
+        try {
+            logger.info("Unblocking card with ID: {}", cardId);
+            Card card = cardRepository.findById(cardId).orElseThrow(() -> new ResourceNotFoundException("Card not found with ID: " + cardId));
             card.setStatus(CardStatus.ACTIVE);
-           Card unblockedCard = cardRepository.save(card);
-           cardEventPublisher.sendCardUnblockMessage(unblockedCard);
+            Card unblockedCard = cardRepository.save(card);
+            logger.info("Card with ID: {} unblocked successfully", cardId);
+            cardEventPublisher.sendCardUnblockMessage(unblockedCard);
+        } catch (Exception ex) {
+            logger.error("Error unblocking card: ", ex);
+            throw ex;
         }
     }
 
     @Override
     public void deleteCard(Long cardId) {
-        cardRepository.deleteById(cardId);
+        try {
+            logger.info("Deleting card with ID: {}", cardId);
+            if (!cardRepository.existsById(cardId)) {
+                throw new ResourceNotFoundException("Card not found with ID: " + cardId);
+            }
+            cardRepository.deleteById(cardId);
+            logger.info("Card with ID: {} deleted successfully", cardId);
+        } catch (Exception ex) {
+            logger.error("Error deleting card: ", ex);
+            throw ex;
+        }
     }
 
-    // Method to generate a random card number
     private String generateCardNumber() {
         Random random = new Random();
-        return String.format("4%015d", random.nextLong(1000000000000000L)); // Simple mock card number starting with 4 (Visa)
+        return String.format("4%015d", random.nextLong(1000000000000000L));
     }
-
 }
