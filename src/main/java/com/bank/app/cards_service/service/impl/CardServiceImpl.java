@@ -1,7 +1,6 @@
 package com.bank.app.cards_service.service.impl;
 
 import com.bank.app.cards_service.entity.Card;
-import com.bank.app.cards_service.exception.ResourceNotFoundException;
 import com.bank.app.cards_service.repo.CardsRepository;
 import com.bank.app.cards_service.service.CardEventPublisher;
 import com.bank.app.cards_service.service.CardsService;
@@ -10,6 +9,7 @@ import com.bank.core.entity.CardType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,100 +27,157 @@ public class CardServiceImpl implements CardsService {
     @Autowired
     private CardEventPublisher cardEventPublisher;
 
+    /**
+     * Request a new card.
+     * @param card The card details for the new card request.
+     * @return The newly created card.
+     */
     @Override
-    public Card issueCard(Card card) {
-        try {
-            logger.info("Issuing a new card for user: {}", card.getUserId());
-            String cardNumber = generateCardNumber();
-            card.setCardNumber(cardNumber);
+    public Card requestNewCard(Card card) {
+        logger.debug("Requesting new card: {}", card);
+        card.setStatus(CardStatus.PENDING_ACTIVATION);
+        card.setCardNumber(generateCardNumber());
+        card.setExpiryDate(LocalDate.now().plusYears(10));
 
-            card.setExpiryDate(LocalDate.now().plusYears(10));
+        if (card.getCardType() == CardType.CREDIT) {
+            card.setCreditLimit(new BigDecimal("25000"));
+            card.setAvailableLimit(card.getCreditLimit());
+        }
 
-            if (card.getCardType() == CardType.CREDIT) {
-                if (card.getCreditLimit() == null) {
-                    card.setCreditLimit(new BigDecimal("25000.00"));
-                }
-                card.setAvailableLimit(card.getCreditLimit());
-            } else if (card.getCardType() == CardType.DEBIT) {
-                card.setCreditLimit(null);
-                card.setAvailableLimit(BigDecimal.ZERO);
-            } else {
-                throw new IllegalArgumentException("Unsupported Card Type: " + card.getCardType());
-            }
+        Card savedCard = cardRepository.save(card);
+        cardEventPublisher.sendIssueCardMessage(savedCard);
+        return savedCard;
+    }
+
+    /**
+     * Activate a card.
+     * @param cardId The ID of the card to be activated.
+     * @return The activated card.
+     */
+    @Override
+    public Card activateCard(Long cardId) {
+        logger.debug("Activating card with ID: {}", cardId);
+        Card card = getCardById(cardId);
+        if (card.getStatus() == CardStatus.PENDING_ACTIVATION) {
             card.setStatus(CardStatus.ACTIVE);
-
-            Card newCard = cardRepository.save(card);
-            cardEventPublisher.sendIssueCardMessage(newCard);
-
-            logger.info("Card issued successfully with card number: {}", newCard.getCardNumber());
-            return newCard;
-        } catch (Exception ex) {
-            logger.error("Error issuing card: ", ex);
-            throw ex;
+            Card activatedCard = cardRepository.save(card);
+            cardEventPublisher.sendCardActivateMessage(activatedCard);
+            return activatedCard;
+        } else {
+            throw new IllegalStateException("Card is not in a pending activation state");
         }
     }
 
+    /**
+     * Block a card.
+     * @param cardId The ID of the card to be blocked.
+     * @return The blocked card.
+     */
     @Override
-    public List<Card> getCardsByUserId(Long userId) {
-        try {
-            logger.info("Fetching cards for user ID: {}", userId);
-            List<Card> cards = cardRepository.findByUserId(userId);
-            if (cards.isEmpty()) {
-                throw new ResourceNotFoundException("No cards found for user ID: " + userId);
-            }
-            logger.info("Fetched {} cards for user ID: {}", cards.size(), userId);
-            return cards;
-        } catch (Exception ex) {
-            logger.error("Error fetching cards: ", ex);
-            throw ex;
-        }
-    }
-
-    @Override
-    public void blockCard(Long cardId) {
-        try {
-            logger.info("Blocking card with ID: {}", cardId);
-            Card card = cardRepository.findById(cardId).orElseThrow(() -> new ResourceNotFoundException("Card not found with ID: " + cardId));
+    public Card blockCard(Long cardId) {
+        logger.debug("Blocking card with ID: {}", cardId);
+        Card card = getCardById(cardId);
+        if (card.getStatus() == CardStatus.ACTIVE) {
             card.setStatus(CardStatus.BLOCKED);
             Card blockedCard = cardRepository.save(card);
-            logger.info("Card with ID: {} blocked successfully", cardId);
             cardEventPublisher.sendCardBlockMessage(blockedCard);
-        } catch (Exception ex) {
-            logger.error("Error blocking card: ", ex);
-            throw ex;
+            return blockedCard;
+        } else {
+            throw new IllegalStateException("Only active cards can be blocked");
         }
     }
 
+    /**
+     * Unblock a card.
+     * @param cardId The ID of the card to be unblocked.
+     * @return The unblocked card.
+     */
     @Override
-    public void unblockCard(Long cardId) {
-        try {
-            logger.info("Unblocking card with ID: {}", cardId);
-            Card card = cardRepository.findById(cardId).orElseThrow(() -> new ResourceNotFoundException("Card not found with ID: " + cardId));
+    public Card unblockCard(Long cardId) {
+        logger.debug("Unblocking card with ID: {}", cardId);
+        Card card = getCardById(cardId);
+        if (card.getStatus() == CardStatus.BLOCKED) {
             card.setStatus(CardStatus.ACTIVE);
             Card unblockedCard = cardRepository.save(card);
-            logger.info("Card with ID: {} unblocked successfully", cardId);
             cardEventPublisher.sendCardUnblockMessage(unblockedCard);
-        } catch (Exception ex) {
-            logger.error("Error unblocking card: ", ex);
-            throw ex;
+            return unblockedCard;
+        } else {
+            throw new IllegalStateException("Only blocked cards can be unblocked");
         }
     }
 
+    /**
+     * Cancel a card.
+     * @param cardId The ID of the card to be cancelled.
+     * @return The cancelled card.
+     */
     @Override
-    public void deleteCard(Long cardId) {
-        try {
-            logger.info("Deleting card with ID: {}", cardId);
-            if (!cardRepository.existsById(cardId)) {
-                throw new ResourceNotFoundException("Card not found with ID: " + cardId);
-            }
-            cardRepository.deleteById(cardId);
-            logger.info("Card with ID: {} deleted successfully", cardId);
-        } catch (Exception ex) {
-            logger.error("Error deleting card: ", ex);
-            throw ex;
+    public Card cancelCard(Long cardId) {
+        logger.debug("Cancelling card with ID: {}", cardId);
+        Card card = getCardById(cardId);
+        if (card.getStatus() != CardStatus.CANCELLED) {
+            card.setStatus(CardStatus.CANCELLED);
+            Card cancelledCard = cardRepository.save(card);
+            cardEventPublisher.sendCardBlockMessage(cancelledCard);
+            return cancelledCard;
+        } else {
+            throw new IllegalStateException("Card is already cancelled");
         }
     }
 
+    /**
+     * Get all cards except those with status ACTIVE.
+     * @return A list of non-active cards.
+     */
+    @Override
+    public List<Card> getAllNonActiveCards() {
+        logger.debug("Fetching all non-active cards");
+        return cardRepository.findByStatusNot(CardStatus.ACTIVE);
+    }
+
+    /**
+     * Scheduled task to automatically expire cards.
+     */
+    @Scheduled(fixedRate = 600000)
+    public void expireCards() {
+        logger.debug("Expiring cards");
+        List<Card> activeCards = cardRepository.findByStatus(CardStatus.ACTIVE);
+        for (Card card : activeCards) {
+            if (card.getExpiryDate().isBefore(LocalDate.now())) {
+                card.setStatus(CardStatus.EXPIRED);
+                Card expiredCard = cardRepository.save(card);
+                cardEventPublisher.sendCardExpireMessage(expiredCard);
+            }
+        }
+    }
+
+    /**
+     * Get card by ID.
+     * @param cardId The ID of the card to retrieve.
+     * @return The card details.
+     */
+    @Override
+    public Card getCardById(Long cardId) {
+        logger.debug("Fetching card by ID: {}", cardId);
+        return cardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalStateException("Card not found"));
+    }
+
+    /**
+     * Get all cards by user ID.
+     * @param userId The ID of the user whose cards are to be retrieved.
+     * @return A list of cards belonging to the user.
+     */
+    @Override
+    public List<Card> getCardsByUserId(Long userId) {
+        logger.debug("Fetching cards by user ID: {}", userId);
+        return cardRepository.findByUserId(userId);
+    }
+
+    /**
+     * Helper function to generate a card number.
+     * @return A randomly generated card number.
+     */
     private String generateCardNumber() {
         Random random = new Random();
         return String.format("4%015d", random.nextLong(1000000000000000L));

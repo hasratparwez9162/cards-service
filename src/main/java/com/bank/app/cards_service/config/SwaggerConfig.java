@@ -7,12 +7,17 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SwaggerConfig {
+
+    /**
+     * Configures the OpenAPI documentation for the Card Service application.
+     * @return an OpenAPI instance with custom information.
+     */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Cards Service API")
+                        .title("Card Service API")
                         .version("1.0")
-                        .description("API documentation for the Cards Service"));
+                        .description("API documentation for the Card Service application"));
     }
 }

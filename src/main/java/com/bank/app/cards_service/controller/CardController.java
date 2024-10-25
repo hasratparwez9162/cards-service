@@ -25,73 +25,106 @@ public class CardController {
         this.cardService = cardService;
     }
 
-    @Operation(summary = "Issue a new card", description = "Issues a credit or debit card for a user")
-    @PostMapping("/issue")
-    public ResponseEntity<Card> issueCard(@RequestBody Card card) {
-        try {
-            logger.info("Issuing a new card for user: {}", card.getUserId());
-            Card newCard = cardService.issueCard(card);
-            logger.info("Card issued successfully with card number: {}", newCard.getCardNumber());
-            return new ResponseEntity<>(newCard, HttpStatus.CREATED);
-        } catch (Exception ex) {
-            logger.error("Error issuing card: ", ex);
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    /**
+     * Endpoint to request a new card.
+     * @param cardRequest The card details for the new card request.
+     * @return The newly created card.
+     */
+    @Operation(summary = "Request a new card")
+    @PostMapping("/request")
+    public ResponseEntity<Card> requestNewCard(@RequestBody Card cardRequest) {
+        logger.debug("Requesting new card: {}", cardRequest);
+        Card card = cardService.requestNewCard(cardRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(card);
     }
 
-    @Operation(summary = "Get user's cards", description = "Fetch all cards associated with a specific user ID")
+    /**
+     * Endpoint to activate a card.
+     * @param cardId The ID of the card to be activated.
+     * @return The activated card.
+     */
+    @Operation(summary = "Activate a card")
+    @PutMapping("/{cardId}/activate")
+    public ResponseEntity<Card> activateCard(@PathVariable Long cardId) {
+        logger.debug("Activating card with ID: {}", cardId);
+        Card activatedCard = cardService.activateCard(cardId);
+        return ResponseEntity.ok(activatedCard);
+    }
+
+    /**
+     * Endpoint to block a card.
+     * @param cardId The ID of the card to be blocked.
+     * @return The blocked card.
+     */
+    @Operation(summary = "Block a card")
+    @PutMapping("/{cardId}/block")
+    public ResponseEntity<Card> blockCard(@PathVariable Long cardId) {
+        logger.debug("Blocking card with ID: {}", cardId);
+        Card blockedCard = cardService.blockCard(cardId);
+        return ResponseEntity.ok(blockedCard);
+    }
+
+    /**
+     * Endpoint to unblock a card.
+     * @param cardId The ID of the card to be unblocked.
+     * @return The unblocked card.
+     */
+    @Operation(summary = "Unblock a card")
+    @PutMapping("/{cardId}/unblock")
+    public ResponseEntity<Card> unblockCard(@PathVariable Long cardId) {
+        logger.debug("Unblocking card with ID: {}", cardId);
+        Card unblockedCard = cardService.unblockCard(cardId);
+        return ResponseEntity.ok(unblockedCard);
+    }
+
+    /**
+     * Endpoint to cancel a card.
+     * @param cardId The ID of the card to be cancelled.
+     * @return The cancelled card.
+     */
+    @Operation(summary = "Cancel a card")
+    @PutMapping("/{cardId}/cancel")
+    public ResponseEntity<Card> cancelCard(@PathVariable Long cardId) {
+        logger.debug("Cancelling card with ID: {}", cardId);
+        Card cancelledCard = cardService.cancelCard(cardId);
+        return ResponseEntity.ok(cancelledCard);
+    }
+
+    /**
+     * Endpoint to get card details by card ID.
+     * @param cardId The ID of the card to retrieve.
+     * @return The card details.
+     */
+    @Operation(summary = "Get card details")
+    @GetMapping("/{cardId}")
+    public ResponseEntity<Card> getCardById(@PathVariable Long cardId) {
+        logger.debug("Fetching card details for ID: {}", cardId);
+        Card card = cardService.getCardById(cardId);
+        return ResponseEntity.ok(card);
+    }
+
+    /**
+     * Endpoint to get all cards by user ID.
+     * @param userId The ID of the user whose cards are to be retrieved.
+     * @return A list of cards belonging to the user.
+     */
+    @Operation(summary = "Get all cards by user ID")
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Card>> getCardsByUserId(@PathVariable Long userId) {
-        try {
-            logger.info("Fetching cards for user ID: {}", userId);
-            List<Card> cards = cardService.getCardsByUserId(userId);
-            logger.info("Fetched {} cards for user ID: {}", cards.size(), userId);
-            return new ResponseEntity<>(cards, HttpStatus.OK);
-        } catch (Exception ex) {
-            logger.error("Error fetching cards: ", ex);
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        logger.debug("Fetching cards for user ID: {}", userId);
+        List<Card> cards = cardService.getCardsByUserId(userId);
+        return ResponseEntity.ok(cards);
     }
 
-    @Operation(summary = "Block a card", description = "Block a card by card ID")
-    @PutMapping("/block/{cardId}")
-    public ResponseEntity<String> blockCard(@PathVariable Long cardId) {
-        try {
-            logger.info("Blocking card with ID: {}", cardId);
-            cardService.blockCard(cardId);
-            logger.info("Card with ID: {} blocked successfully", cardId);
-            return new ResponseEntity<>("Card blocked successfully", HttpStatus.OK);
-        } catch (Exception ex) {
-            logger.error("Error blocking card: ", ex);
-            return new ResponseEntity<>("Error blocking card", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @Operation(summary = "Unblock a card", description = "Unblock a card by card ID")
-    @PutMapping("/unblock/{cardId}")
-    public ResponseEntity<String> unblockCard(@PathVariable Long cardId) {
-        try {
-            logger.info("Unblocking card with ID: {}", cardId);
-            cardService.unblockCard(cardId);
-            logger.info("Card with ID: {} unblocked successfully", cardId);
-            return new ResponseEntity<>("Card unblocked successfully", HttpStatus.OK);
-        } catch (Exception ex) {
-            logger.error("Error unblocking card: ", ex);
-            return new ResponseEntity<>("Error unblocking card", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @Operation(summary = "Delete a card", description = "Delete a card by card ID")
-    @DeleteMapping("/delete/{cardId}")
-    public ResponseEntity<String> deleteCard(@PathVariable Long cardId) {
-        try {
-            logger.info("Deleting card with ID: {}", cardId);
-            cardService.deleteCard(cardId);
-            logger.info("Card with ID: {} deleted successfully", cardId);
-            return new ResponseEntity<>("Card deleted successfully", HttpStatus.OK);
-        } catch (Exception ex) {
-            logger.error("Error deleting card: ", ex);
-            return new ResponseEntity<>("Error deleting card", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    /**
+     * Endpoint to get all cards except those with status ACTIVE.
+     * @return A list of non-active cards.
+     */
+    @Operation(summary = "Get all cards except those with status ACTIVE")
+    @GetMapping("/non-active")
+    public ResponseEntity<List<Card>> getAllNonActiveCards() {
+        logger.debug("Fetching all non-active cards");
+        List<Card> cards = cardService.getAllNonActiveCards();
+        return ResponseEntity.ok(cards);
     }
 }

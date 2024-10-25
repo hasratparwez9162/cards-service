@@ -5,12 +5,19 @@ import com.bank.app.cards_service.entity.Card;
 import java.util.List;
 
 public interface CardsService {
-    Card issueCard(Card card);
+    Card requestNewCard(Card card);
+
+    Card activateCard(Long cardId);
+
+    Card blockCard(Long cardId);
+
+    Card unblockCard(Long cardId);
 
     List<Card> getCardsByUserId(Long userId);
 
-    void blockCard(Long cardId);
+    Card cancelCard(Long cardId);
 
-    void unblockCard(Long cardId);
-    void deleteCard(Long cardId);
+    List<Card> getAllNonActiveCards();
+
+    Card getCardById(Long cardId);
 }

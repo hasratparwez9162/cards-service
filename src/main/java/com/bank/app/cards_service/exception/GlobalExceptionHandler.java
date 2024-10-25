@@ -13,21 +13,39 @@ public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    /**
+     * Handle all exceptions.
+     * @param ex The exception that was thrown.
+     * @param request The web request during which the exception was thrown.
+     * @return A response entity with an error message and HTTP status code 500.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleAllExceptions(Exception ex, WebRequest request) {
         logger.error("Exception: ", ex);
-        return new ResponseEntity<>("An error occurred: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + ex.getMessage());
     }
 
+    /**
+     * Handle IllegalArgumentException.
+     * @param ex The exception that was thrown.
+     * @param request The web request during which the exception was thrown.
+     * @return A response entity with an error message and HTTP status code 400.
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
         logger.error("IllegalArgumentException: ", ex);
-        return new ResponseEntity<>("Invalid input: " + ex.getMessage(), HttpStatus.BAD_REQUEST);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid input: " + ex.getMessage());
     }
 
+    /**
+     * Handle ResourceNotFoundException.
+     * @param ex The exception that was thrown.
+     * @param request The web request during which the exception was thrown.
+     * @return A response entity with an error message and HTTP status code 404.
+     */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<String> handleResourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
         logger.error("ResourceNotFoundException: ", ex);
-        return new ResponseEntity<>("Resource not found: " + ex.getMessage(), HttpStatus.NOT_FOUND);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Resource not found: " + ex.getMessage());
     }
 }

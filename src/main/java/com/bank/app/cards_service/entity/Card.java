@@ -39,5 +39,6 @@ public class Card {
 
     @Enumerated(EnumType.STRING)
     private CardStatus status;  // Enum for ACTIVE, BLOCKED, etc.
+
 }
 
