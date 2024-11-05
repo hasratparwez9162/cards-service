@@ -1,6 +1,7 @@
 package com.bank.app.cards_service.service.impl;
 
 import com.bank.app.cards_service.entity.Card;
+import com.bank.app.cards_service.exception.CardNotFoundException;
 import com.bank.app.cards_service.repo.CardsRepository;
 import com.bank.app.cards_service.service.CardEventPublisher;
 import com.bank.app.cards_service.service.CardsService;
@@ -67,6 +68,64 @@ public class CardServiceImpl implements CardsService {
             throw new IllegalStateException("Card is not in a pending activation state");
         }
     }
+    /**
+     * Service method to handle a user’s request to block a card.
+     * Sets the card status to PENDING_BLOCK for approval.
+     *
+     * @param cardId The ID of the card to be blocked.
+     * @return The updated Card object with status PENDING_BLOCK.
+     * @throws CardNotFoundException if the card with the specified ID does not exist.
+     * @throws IllegalStateException if the card is not in an eligible status for blocking.
+     */
+    @Override
+    public Card requestBlockCard(Long cardId) throws CardNotFoundException {
+        // Finds the card by its ID or throws a CardNotFoundException if it does not exist.
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new CardNotFoundException("Card not found with ID: " + cardId));
+
+        // Checks if the card is in ACTIVE status before allowing a block request.
+        if (card.getStatus() == CardStatus.ACTIVE) {
+            // Sets the status to PENDING_BLOCK to indicate a pending block request.
+            card.setStatus(CardStatus.PENDING_BLOCK);
+            cardRepository.save(card);  // Persists the updated card status.
+            logger.info("Card with ID {} is now in PENDING_BLOCK status.", cardId);
+        } else {
+            // Throws an exception if the card is not in an eligible status for blocking.
+            throw new IllegalStateException("Card is not eligible for blocking in its current status.");
+        }
+
+        return card;  // Returns the card with the updated status.
+    }
+
+    /**
+     * Service method to handle a user’s request to unblock a card.
+     * Sets the card status to PENDING_UNBLOCK for approval.
+     *
+     * @param cardId The ID of the card to be unblocked.
+     * @return The updated Card object with status PENDING_UNBLOCK.
+     * @throws CardNotFoundException if the card with the specified ID does not exist.
+     * @throws IllegalStateException if the card is not in an eligible status for unblocking.
+     */
+    @Override
+    public Card requestUnblockCard(Long cardId) throws CardNotFoundException {
+        // Finds the card by its ID or throws a CardNotFoundException if it does not exist.
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new CardNotFoundException("Card not found with ID: " + cardId));
+
+        // Checks if the card is in BLOCKED status before allowing an unblock request.
+        if (card.getStatus() == CardStatus.BLOCKED) {
+            // Sets the status to PENDING_UNBLOCK to indicate a pending unblock request.
+            card.setStatus(CardStatus.PENDING_UNBLOCK);
+            cardRepository.save(card);  // Persists the updated card status.
+            logger.info("Card with ID {} is now in PENDING_UNBLOCK status.", cardId);
+        } else {
+            // Throws an exception if the card is not in an eligible status for unblocking.
+            throw new IllegalStateException("Card is not eligible for unblocking in its current status.");
+        }
+
+        return card;  // Returns the card with the updated status.
+    }
+
 
     /**
      * Block a card.
@@ -77,13 +136,13 @@ public class CardServiceImpl implements CardsService {
     public Card blockCard(Long cardId) {
         logger.debug("Blocking card with ID: {}", cardId);
         Card card = getCardById(cardId);
-        if (card.getStatus() == CardStatus.ACTIVE) {
+        if (card.getStatus() == CardStatus.ACTIVE || card.getStatus() == CardStatus.PENDING_BLOCK) {
             card.setStatus(CardStatus.BLOCKED);
             Card blockedCard = cardRepository.save(card);
             cardEventPublisher.sendCardBlockMessage(blockedCard);
             return blockedCard;
         } else {
-            throw new IllegalStateException("Only active cards can be blocked");
+            throw new IllegalStateException("Only active or pending_block cards can be blocked");
         }
     }
 
@@ -96,7 +155,7 @@ public class CardServiceImpl implements CardsService {
     public Card unblockCard(Long cardId) {
         logger.debug("Unblocking card with ID: {}", cardId);
         Card card = getCardById(cardId);
-        if (card.getStatus() == CardStatus.BLOCKED) {
+        if (card.getStatus() == CardStatus.BLOCKED || card.getStatus() == CardStatus.PENDING_UNBLOCK) {
             card.setStatus(CardStatus.ACTIVE);
             Card unblockedCard = cardRepository.save(card);
             cardEventPublisher.sendCardUnblockMessage(unblockedCard);
